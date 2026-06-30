@@ -20,7 +20,7 @@
 
 ۱. ابتدا مخزن را روی سیستم خود Clone کنید:
 ```bash
-git clone https://github.com/Mohse-Ahadinejad/Advanced-Bank-System.git
+git clone [https://github.com/Mohse-Ahadinejad/Advanced-Bank-System.git](https://github.com/Mohse-Ahadinejad/Advanced-Bank-System.git)
 ```
 
 ۲. وارد پوشه پروژه شوید:
@@ -28,15 +28,20 @@ git clone https://github.com/Mohse-Ahadinejad/Advanced-Bank-System.git
 cd Advanced-Bank-System
 ```
 
-۳. فایل اصلی برنامه را اجرا کنید:
+۳. **(اختیاری اما پیشنهادی)** برای تولید داده‌های تستی (مشتریان، حساب‌ها و تاریخچه تراکنش‌ها) اسکریپت زیر را اجرا کنید:
+```bash
+python seed_db.py
+```
+
+۴. فایل اصلی برنامه را اجرا کنید:
 ```bash
 python main.py
 ```
-*(سیستم به صورت خودکار دیتابیس `fund_database.db` را ساخته و کاربر مدیر (Admin) پیش‌فرض را ایجاد می‌کند.)*
 
 ### 🔑 اطلاعات ورود پیش‌فرض
-* **نام کاربری:** `admin`
-* **رمز عبور:** `12345`
+* **نام کاربری مدیر (Admin):** `admin`
+* **رمز عبور مدیر:** `12345`
+* **پین‌کد تمام کارت‌های تستی تولید شده:** `1234`
 
 ## 📂 ساختار پوشه‌ها
 ```text
@@ -47,5 +52,6 @@ Advanced-Bank-System/
 ├── view/               # رابط کاربری تفکیک‌شده بر اساس کامپوننت
 ├── utils/              # توابع کمکی امنیتی و نرمال‌سازی داده‌ها
 ├── widgets/            # ابزارهای گرافیکی سفارشی (مانند Tooltip)
+├── seed_db.py          # اسکریپت تولید خودکار داده‌های تستی (Mock Data)
 └── main.py             # نقطه ورود برنامه و محل تزریق وابستگی‌ها (DI)
 ```
