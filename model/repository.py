@@ -262,8 +262,9 @@ class BankRepository:
     def search_customers(self, query=""):
         with self._get_connection() as conn:
             cursor = conn.cursor()
+            # ستون‌ها دقیقاً متناسب با ساختار ۴ ستونه Treeview در رابط کاربری هماهنگ شدند
             sql = '''
-                  SELECT a.status, a.created_at, a.balance, a.account_number, u.national_id, u.name
+                  SELECT a.account_number, a.balance, a.created_at, a.status
                   FROM Accounts a
                            JOIN Users u ON a.user_id = u.id \
                   '''
