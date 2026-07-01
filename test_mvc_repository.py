@@ -1,6 +1,8 @@
 import os
 import pytest
 from model.repository import BankRepository
+from model.account import Account
+from model.exceptions import BankError, AccountBlockedError, AccountClosedError
 from utils.security_utils import hash_text
 
 
@@ -13,16 +15,16 @@ def repo():
 
     yield repository
 
-    # پاکسازی فایل دیتابیس تستی بعد از اتمام تست‌ها
     if os.path.exists(test_db):
         os.remove(test_db)
 
 
 # ================= 2. Database Initialization Tests =================
 def test_database_initialization_and_admin_creation(repo):
-    """بررسی ساخته شدن جداول و ادمین پیش‌فرض در دیتابیس جدید"""
-    admin_hash = repo.get_admin_password_hash("admin")
-    assert admin_hash is not None, "ادمین پیش‌فرض باید به صورت خودکار ساخته شود"
+    """بررسی ساخته شدن جداول و ادمین پیش‌فرض در دیتابیس جدید با امنیت Salt"""
+    admin_data = repo.get_admin_data("admin")
+    assert admin_data is not None, "ادمین پیش‌فرض باید ساخته شود"
+    assert len(admin_data) == 2, "خروجی اطلاعات ادمین باید شامل هش و نمک باشد"
 
 
 # ================= 3. Core CRUD Operations Tests =================
@@ -35,7 +37,8 @@ def test_add_customer_and_account(repo):
     assert customer is not None
     assert customer[1] == "تست کاربر"
 
-    pin_hash, salt = hash_text("1234"), "test_salt"
+    # اصلاح باگ تست: دریافت همزمان هش و نمک از تابع امنیتی
+    pin_hash, salt = hash_text("1234")
     repo.add_account("6037990000000000", user_id, pin_hash, salt, 500000, "فعال")
 
     acc_data = repo.get_account_data("6037990000000000")
@@ -46,20 +49,15 @@ def test_add_customer_and_account(repo):
 
 # ================= 4. Regression Test (The 6-Column Bug) =================
 def test_search_customers_returns_exactly_6_columns(repo):
-    """
-    رگرسیون تست: تضمین می‌کند که خروجی جستجو دقیقاً ۶ آیتم برای پر کردن Treeview دارد
-    و ترتیب آن‌ها دقیقاً مطابق با انتظار UI است.
-    """
+    """تضمین خروجی ۶ ستونه برای جدول رابط کاربری"""
     user_id = repo.add_customer("مشتری گزارش", "9998887776", "09129998877")
     repo.add_account("1111222233334444", user_id, "hash", "salt", 1000, "فعال")
 
     results = repo.search_customers("مشتری گزارش")
 
-    assert len(results) == 1, "باید یک مشتری پیدا شود"
-    assert len(results[0]) == 6, "خروجی دیتابیس باید دقیقاً ۶ ستون برای رابط کاربری داشته باشد"
+    assert len(results) == 1
+    assert len(results[0]) == 6
 
-    # 🎯 اصلاح حیاتی: ترتیب دریافت خروجی‌ها دقیقاً با کوئری دیتابیس هماهنگ شد
-    # خروجی دیتابیس تو: status, created_at, balance, account_number, national_id, name
     status, created_at, balance, acc_num, nid, name = results[0]
 
     assert status == "فعال"
@@ -84,3 +82,28 @@ def test_dashboard_stats_calculation(repo):
 
     assert stats["total_members"] == 2
     assert stats["total_assets"] == 500000
+
+
+# ================= 6. Account Domain Logic Tests (احیای تست‌های منطقی) =================
+def test_account_state_machine_logic():
+    """تست قوانین حیاتی کسب‌وکار روی وضعیت حساب‌ها"""
+    acc = Account("1234", 1, "hash", "salt", balance=50000, status="فعال")
+
+    # 1. تست مسدود و فعال کردن
+    acc.block_account()
+    assert acc.status == "مسدود"
+    acc.activate_account()
+    assert acc.status == "فعال"
+
+    # 2. جلوگیری از بستن حساب دارای موجودی
+    with pytest.raises(BankError, match="دارای 50,000 ریال موجودی است"):
+        acc.close_account()
+
+    # 3. صفر کردن موجودی و بستن موفق حساب
+    acc.balance = 0
+    acc.close_account()
+    assert acc.status == "بسته"
+
+    # 4. جلوگیری از فعال‌سازی مجدد حساب ابطال‌شده
+    with pytest.raises(BankError, match="بسته‌شده را نمی‌توان مجدداً فعال کرد"):
+        acc.activate_account()
