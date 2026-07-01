@@ -1,5 +1,6 @@
 import csv
 from .base_controller import BaseController
+from model.account import Account
 
 
 class CustomersController(BaseController):
@@ -9,11 +10,23 @@ class CustomersController(BaseController):
 
     def handle_account_status_modify(self, acc_num, new_status):
         try:
-            self.repo.update_account_status(acc_num, new_status)
-            self.log_action("STATUS_CHANGE", f"وضعیت حساب {acc_num} به {new_status} تغییر یافت")
-            self.view.show_message("موفق", f"وضعیت حساب به '{new_status}' تغییر کرد.")
+            acc_data = self.repo.get_account_data(acc_num)
+            if not acc_data:
+                raise ValueError("حساب در سیستم یافت نشد.")
 
-            # رفرش کردن جدول مشتریان برای نمایش زنده تغییر رنگ
+            # ساخت شیء دامنه و اعمال قوانین (جلوگیری از فعال‌سازی حساب بسته و غیره)
+            acc = Account(**acc_data)
+            if new_status == "بسته":
+                acc.close_account()
+            elif new_status == "مسدود":
+                acc.block_account()
+            elif new_status == "فعال":
+                acc.activate_account()
+
+            self.repo.update_account_status(acc.account_number, acc.status)
+            self.log_action("STATUS_CHANGE", f"وضعیت حساب {acc_num} به {acc.status} تغییر یافت")
+            self.view.show_message("موفق", f"وضعیت حساب با موفقیت به '{acc.status}' تغییر کرد.")
+
             self.handle_customer_search(self.view.customers_tab.v_q.get())
             self.refresh_dashboard_data()
         except Exception as e:
@@ -37,11 +50,10 @@ class CustomersController(BaseController):
             types=[("CSV files", "*.csv")]
         )
 
-        if not filepath:  # کاربر کنسل کرده است
+        if not filepath:
             return
 
         try:
-            # استفاده از utf-8-sig برای پشتیبانی از کاراکترهای فارسی در اکسل ویندوز
             with open(filepath, 'w', newline='', encoding='utf-8-sig') as f:
                 writer = csv.writer(f)
                 writer.writerow(['نوع تراکنش', 'مبلغ (ریال)', 'موجودی پس از تراکنش', 'زمان', 'توضیحات'])

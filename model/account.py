@@ -1,11 +1,8 @@
-from .exceptions import AccountBlockedError
+from model.exceptions import BankError, AccountBlockedError, AccountClosedError
 
 
 class Account:
-    """موجودیت حساب بانکی و مدیریت وضعیت آن"""
-
-    def __init__(self, account_number, user_id=None, pin_hash=None, salt=None, balance=0, status="فعال",
-                 created_at=None):
+    def __init__(self, account_number, user_id, pin_hash, salt, balance=0, status="فعال", created_at=None):
         self.account_number = account_number
         self.user_id = user_id
         self.pin_hash = pin_hash
@@ -14,13 +11,28 @@ class Account:
         self.status = status
         self.created_at = created_at
 
-    def apply_transaction(self, transaction):
-        """
-        اعمال تراکنش روی حساب با استفاده از Duck Typing
-        بدون import کردن مستقیم کلاس‌های تراکنش برای جلوگیری از وابستگی حلقوی.
-        """
-        if self.status != "فعال":
-            raise AccountBlockedError(f"حساب {self.account_number} در وضعیت '{self.status}' است و امکان تراکنش ندارد.")
+    def block_account(self):
+        if self.status == "بسته":
+            raise BankError("حساب بسته شده است و قابل مسدودسازی نیست.")
+        self.status = "مسدود"
 
-        # متد execute در شیء تراکنش پیاده‌سازی شده است
+    def activate_account(self):
+        if self.status == "بسته":
+            raise BankError("حساب بسته‌شده را نمی‌توان مجدداً فعال کرد.")
+        self.status = "فعال"
+
+    def close_account(self):
+        if self.status == "بسته":
+            raise BankError("حساب از قبل بسته شده است.")
+        if self.balance > 0:
+            raise BankError(f"امکان بستن حساب وجود ندارد. حساب دارای {self.balance:,} ریال موجودی است.")
+        self.status = "بسته"
+
+    def apply_transaction(self, transaction):
+        if self.status == "بسته":
+            raise AccountClosedError("حساب به طور کامل بسته شده است و امکان تراکنش ندارد.")
+        if self.status == "مسدود":
+            raise AccountBlockedError("حساب مسدود است و امکان تراکنش ندارد.")
+
+        # اجرای منطق تراکنش در صورت مجاز بودن وضعیت حساب
         transaction.execute(self)
