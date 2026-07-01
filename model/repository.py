@@ -6,6 +6,9 @@ from contextlib import contextmanager
 class BankRepository:
     """لایه ارتباط با پایگاه داده SQLite و تضمین تراکنش‌های اتمیک"""
 
+    # ╔══════════════════════════════╗
+    # ║    Core / Initialization     ║
+    # ╚══════════════════════════════╝
     def __init__(self, db_name="fund_database.db"):
         self.db_name = db_name
         self._create_tables()
@@ -149,6 +152,9 @@ class BankRepository:
                                (new_hash, new_salt))
                 conn.commit()
 
+    # ╔══════════════════════════════╗
+    # ║     Customer Operations      ║
+    # ╚══════════════════════════════╝
     def add_customer(self, name, national_id, phone, created_at=None):
         if not created_at:
             created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -165,6 +171,9 @@ class BankRepository:
             cursor.execute('SELECT * FROM Users WHERE national_id = ?', (national_id,))
             return cursor.fetchone()
 
+    # ╔══════════════════════════════╗
+    # ║      Account Operations      ║
+    # ╚══════════════════════════════╝
     def add_account(self, account_number, user_id, pin_hash, salt, balance=0, status="فعال", created_at=None):
         if not created_at:
             created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -199,6 +208,9 @@ class BankRepository:
             cursor.execute('UPDATE Accounts SET status = ? WHERE account_number = ?', (new_status, account_number))
             conn.commit()
 
+    # ╔══════════════════════════════╗
+    # ║    Transaction Operations    ║
+    # ╚══════════════════════════════╝
     def execute_atomic_operation(self, account, transaction_obj):
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         with self._get_connection() as conn:
@@ -242,6 +254,9 @@ class BankRepository:
                 conn.rollback()
                 raise e
 
+    # ╔══════════════════════════════╗
+    # ║      Reporting & Search      ║
+    # ╚══════════════════════════════╝
     def get_dashboard_stats(self):
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -286,6 +301,9 @@ class BankRepository:
                            ''', (account_number,))
             return cursor.fetchall()
 
+    # ╔══════════════════════════════╗
+    # ║       Admin Operations       ║
+    # ╚══════════════════════════════╝
     def get_admin_data(self, username):
         """بازگرداندن هش و نمکِ ذخیره‌شده برای پروسه لاگین امن"""
         with self._get_connection() as conn:
